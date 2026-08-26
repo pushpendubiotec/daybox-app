@@ -69,7 +69,7 @@ android.api = 33
 android.minapi = 21
 
 # (str) Android NDK version to use (Using 25b prevents 404 download errors)
-android.ndk = 25b
+android.ndk = 25c
 
 # (int) Android NDK API version
 android.ndk_api = 21
