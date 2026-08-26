@@ -15,7 +15,7 @@ fullscreen = 0
 
 # Android specific configurations
 android.minapi = 21
-android.sdk = 33
+# android.sdk = 33
 android.ndk = 25.2.9519653
 android.accept_sdk_license = True
 android.permissions = INTERNET,VIBRATE,POST_NOTIFICATIONS
