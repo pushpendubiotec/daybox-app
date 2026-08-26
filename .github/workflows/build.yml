@@ -7,18 +7,37 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Build APK inside Docker Container
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install System Dependencies
         run: |
-          docker run --rm \
-            -v ${{ github.workspace }}:/home/user/hostpython \
-            ghcr.io/kivy/buildozer:latest \
-            bash -c "yes | buildozer -v android debug"
+          sudo apt-get update
+          sudo apt-get install -y build-essential libffi-dev libssl-dev ccache git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake gettext libreadline-dev libgdbm-dev libsqlite3-dev libbz2-dev
+
+      - name: Install Buildozer & Dependencies
+        run: |
+          pip install --upgrade pip setuptools wheel
+          pip install cython==0.29.33
+          pip install buildozer python-for-android
+
+      - name: Pre-accept Android SDK Licenses
+        run: |
+          mkdir -p ~/.buildozer/android/platform/android-sdk/licenses
+          echo -e "\n24833bda58204f67fe00193c8ea696c4529e9241\n89330d322059631a5671176100f01b5a73563d77\ne675675310299f41723b42e88863a61e45a10f27" > ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-license
+          echo -e "\n84831b9409646a918e30573bab4c9c91346d8abd\n504667f4c0b7da98d6879774e069d32252245e6a" > ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-preview-license
+
+      - name: Build APK with Buildozer
+        run: |
+          buildozer -v android debug
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
