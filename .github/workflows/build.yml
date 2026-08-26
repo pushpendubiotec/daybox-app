@@ -10,16 +10,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout Repository
+      uses: actions/checkout@v4
 
-    - name: Build with Buildozer Action
-      uses: ArtemSydoryk/buildozer-action@v1.2.0
+    - name: Build with Buildozer
+      uses: ArtemSBulgakov/buildozer-action@v1
+      id: buildozer
       with:
         command: buildozer android debug
-        subfolder: .
+        buildozer_version: stable
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
         name: daybox-app
-        path: bin/*.apk
+        path: ./*.apk
