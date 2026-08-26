@@ -7,31 +7,15 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
+    container:
+      image: kivy/buildozer:latest
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
-
-      - name: Install Build Dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential libffi-dev libssl-dev ccache git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake gettext libreadline-dev libgdbm-dev libsqlite3-dev libbz2-dev
-
-      - name: Install Buildozer and Cython
-        run: |
-          pip install --upgrade pip setuptools wheel
-          pip install cython==0.29.33
-          pip install git+https://github.com/kivy/buildozer.git@master
-
-      - name: Build APK with Buildozer
-        env:
-          ACCEPT_BUILD_NDK_LICENSES: 1
+      - name: Build APK with Buildozer Container
         run: |
           buildozer -v android debug
 
