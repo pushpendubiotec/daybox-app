@@ -30,10 +30,13 @@ jobs:
           pip install git+https://github.com/kivy/buildozer.git@master
           pip install git+https://github.com/kivy/python-for-android.git@master
 
+      - name: Pre-accept Android SDK Licenses
+        run: |
+          mkdir -p ~/.buildozer/android/platform/android-sdk/licenses
+          echo -e "\n24833bda58204f67fe00193c8ea696c4529e9241\n89330d322059631a5671176100f01b5a73563d77\ne675675310299f41723b42e88863a61e45a10f27" > ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-license
+          echo -e "\n84831b9409646a918e30573bab4c9c91346d8abd\n504667f4c0b7da98d6879774e069d32252245e6a" > ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-preview-license
+
       - name: Build APK with Buildozer
-        env:
-          APP_ANDROID_ACCEPT_SDK_LICENSES: '1'
-          BUILDOZER_WARN_ON_VERSION_DEFAULTS: '0'
         run: |
           buildozer -v android debug
 
