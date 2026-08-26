@@ -10,10 +10,15 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: kivy/buildozer:latest
+      options: --user 1000
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+
+      - name: Fix directory permissions
+        run: |
+          git config --global --add safe.directory /__w/daybox-app/daybox-app
 
       - name: Build APK with Buildozer Container
         run: |
