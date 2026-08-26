@@ -3,11 +3,13 @@ name: Build Android APK
 on:
   push:
     branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
   workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout Repository
@@ -21,23 +23,22 @@ jobs:
       - name: Install System Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential libffi-dev libssl-dev ccache git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo6 cmake gettext libreadline-dev libgdbm-dev libsqlite3-dev libbz2-dev
+          sudo apt-get install -y build-essential libffi-dev libssl-dev ccache git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake gettext libreadline-dev libgdbm-dev libsqlite3-dev libbz2-dev
 
-      - name: Install Buildozer & Cython
+      - name: Install Latest Buildozer & p4a
         run: |
           pip install --upgrade pip setuptools wheel
           pip install cython==0.29.33
           pip install git+https://github.com/kivy/buildozer.git@master
+          pip install git+https://github.com/kivy/python-for-android.git@master
 
-      - name: Build APK
-        env:
-          APP_ANDROID_ACCEPT_SDK_LICENSES: 1
-          BUILDOZER_WARN_ON_VERSION_DEFAULTS: 0
+      - name: Build APK with Buildozer
         run: |
-          buildozer android debug
+          yes | buildozer -v android debug
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: daybox-apk
           path: bin/*.apk
+          
