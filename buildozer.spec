@@ -99,6 +99,8 @@ android.debug_artifact = apk
 log_level = 2
 
 # (int) Display warning if buildozer is run as root (0 = disable, 1 = enable)
+warn_on_root = 0
+
 warn_on_version_defaults = 1
 
 # (str) Path to build artifact storage
