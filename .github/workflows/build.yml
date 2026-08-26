@@ -8,21 +8,33 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container:
-      image: kivy/buildozer:latest
-      options: --user 1000
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Fix directory permissions
-        run: |
-          git config --global --add safe.directory /__w/daybox-app/daybox-app
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
 
-      - name: Build APK with Buildozer Container
+      - name: Install System Dependencies
         run: |
-          buildozer -v android debug
+          sudo apt-get update
+          sudo apt-get install -y build-essential libffi-dev libssl-dev ccache git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo6 cmake gettext libreadline-dev libgdbm-dev libsqlite3-dev libbz2-dev
+
+      - name: Install Buildozer & Cython
+        run: |
+          pip install --upgrade pip setuptools wheel
+          pip install cython==0.29.33
+          pip install git+https://github.com/kivy/buildozer.git@master
+
+      - name: Build APK
+        env:
+          APP_ANDROID_ACCEPT_SDK_LICENSES: 1
+          BUILDOZER_WARN_ON_VERSION_DEFAULTS: 0
+        run: |
+          buildozer android debug
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
