@@ -23,12 +23,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential libffi-dev libssl-dev ccache git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake gettext libreadline-dev libgdbm-dev libsqlite3-dev libbz2-dev
 
-      - name: Install Latest Buildozer & p4a
+      - name: Install Buildozer & Stable Dependencies
         run: |
           pip install --upgrade pip setuptools wheel
           pip install cython==0.29.33
-          pip install git+https://github.com/kivy/buildozer.git@master
-          pip install git+https://github.com/kivy/python-for-android.git@master
+          pip install buildozer
+          pip install python-for-android
 
       - name: Pre-accept Android SDK Licenses
         run: |
@@ -37,6 +37,8 @@ jobs:
           echo -e "\n84831b9409646a918e30573bab4c9c91346d8abd\n504667f4c0b7da98d6879774e069d32252245e6a" > ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-preview-license
 
       - name: Build APK with Buildozer
+        env:
+          APP_ANDROID_ACCEPT_SDK_LICENSES: '1'
         run: |
           buildozer -v android debug
 
