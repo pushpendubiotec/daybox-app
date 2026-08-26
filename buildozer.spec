@@ -29,7 +29,7 @@ version = 0.1
 
 # (list) Application requirements
 # Add any extra Python libraries here separated by commas (e.g., requests, urllib3)
-requirements = python3,kivy
+requirements = python3==3.11.0,kivy
 
 # (str) Custom source folders for requirements
 # Sets custom source for any requirement with recipes or source code
