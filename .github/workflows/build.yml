@@ -16,13 +16,8 @@ jobs:
       - name: Build APK inside Docker Container
         run: |
           docker run --rm \
+            -e BUILDOZER_WARN_ON_VERSION_DEFAULTS=0 \
             -v ${{ github.workspace }}:/home/user/hostpython \
             ghcr.io/kivy/buildozer:latest \
-            android debug
-
-      - name: Upload APK Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: daybox-apk
-          path: bin/*.apk
-          
+            buildozer -v android debug
+            
