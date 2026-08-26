@@ -13,17 +13,12 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Fix Directory Permissions
-        run: |
-          sudo chown -R 1000:1000 .
-
       - name: Build APK inside Docker Container
         run: |
           docker run --rm \
-            --user 1000:1000 \
             -v ${{ github.workspace }}:/home/user/hostpython \
             ghcr.io/kivy/buildozer:latest \
-            android debug
+            bash -c "yes | buildozer -v android debug"
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
