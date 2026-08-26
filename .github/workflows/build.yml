@@ -35,7 +35,7 @@ jobs:
           APP_ANDROID_ACCEPT_SDK_LICENSES: '1'
           BUILDOZER_WARN_ON_VERSION_DEFAULTS: '0'
         run: |
-          buildozer --warn_on_version_defaults 0 android debug
+          buildozer -v android debug
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
