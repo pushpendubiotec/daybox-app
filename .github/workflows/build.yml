@@ -3,8 +3,6 @@ name: Build Android APK
 on:
   push:
     branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
   workflow_dispatch:
 
 jobs:
@@ -35,9 +33,9 @@ jobs:
       - name: Build APK with Buildozer
         env:
           APP_ANDROID_ACCEPT_SDK_LICENSES: '1'
+          BUILDOZER_WARN_ON_VERSION_DEFAULTS: '0'
         run: |
-          buildozer -v android debug
-          
+          buildozer --warn_on_version_defaults 0 android debug
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
