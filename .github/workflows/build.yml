@@ -21,18 +21,27 @@ jobs:
       - name: Install System Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential libffi-dev libssl-dev ccache git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake gettext libreadline-dev libgdbm-dev libsqlite3-dev libbz2-dev
+          sudo apt-get install -y build-essential libffi-dev libssl-dev ccache git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake gettext libreadline-dev libgdbm-dev libsqlite3-dev libbz2-dev wget
 
-      - name: Install Buildozer & Stable Dependencies
+      - name: Install Buildozer & Dependencies
         run: |
           pip install --upgrade pip setuptools wheel
           pip install cython==0.29.33
-          pip install buildozer
-          pip install python-for-android
+          pip install buildozer python-for-android
 
-      - name: Pre-accept Android SDK Licenses
+      - name: Setup Android SDK Command-Line Tools & Licenses
         run: |
+          # Create target directories
           mkdir -p ~/.buildozer/android/platform/android-sdk/licenses
+          
+          # Download and unpack command-line tools into legacy path expected by Buildozer
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O commandlinetools.zip
+          unzip -q commandlinetools.zip -d /tmp/cmdline-tools
+          mkdir -p ~/.buildozer/android/platform/android-sdk/tools
+          cp -r /tmp/cmdline-tools/cmdline-tools/* ~/.buildozer/android/platform/android-sdk/tools/
+          rm commandlinetools.zip
+          
+          # Pre-accept licenses
           echo -e "\n24833bda58204f67fe00193c8ea696c4529e9241\n89330d322059631a5671176100f01b5a73563d77\ne675675310299f41723b42e88863a61e45a10f27" > ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-license
           echo -e "\n84831b9409646a918e30573bab4c9c91346d8abd\n504667f4c0b7da98d6879774e069d32252245e6a" > ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-preview-license
 
