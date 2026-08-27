@@ -22,9 +22,13 @@ source.exclude_dirs = tests, bin, .venv, .git, .github
 version = 0.1
 
 # (list) Application requirements
-# NOTE: do not pin an exact python3 version here (e.g. python3==3.11.0) -
-# it breaks python-for-android's recipe resolution. Just "python3" is safest.
-requirements = python3==3.11,kivy==2.3.1
+# IMPORTANT: do not pin an exact python3 version here (e.g. python3==3.11) -
+# python-for-android's hostpython3 recipe is tied to the installed p4a
+# version and may resolve to a different Python (e.g. 3.14.2). If python3
+# and hostpython3 versions don't match, the build fails with:
+#   "Build failed: python3 should have same version as hostpython3"
+# Leaving python3 unpinned lets both resolve to the same version together.
+requirements = python3,kivy==2.3.1
 
 # (str) Presplash image filename
 #presplash.filename = %(source.dir)s/data/presplash.png
