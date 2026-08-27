@@ -55,7 +55,7 @@ jobs:
         run: |
           pip install --upgrade pip setuptools wheel
           pip install Cython==0.29.33
-          pip install buildozer
+          pip install buildozer==1.5.0 python-for-android==2024.1.21 cython==0.29.36
 
       # Plain, direct buildozer invocation - no third-party build actions,
       # no Docker container, no extra CLI flags. Every one of those
