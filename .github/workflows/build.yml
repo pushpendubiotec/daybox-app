@@ -7,10 +7,13 @@ on:
 
 jobs:
   build:
+    # Pinned explicitly to 22.04 (jammy). "ubuntu-latest" now points at 24.04
+    # (noble), which dropped libtinfo5 from its default apt sources and
+    # caused earlier runs to fail at "Install System Dependencies".
     runs-on: ubuntu-22.04
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Python
@@ -18,39 +21,50 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install System Dependencies
+      - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential libffi-dev libssl-dev ccache git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake gettext libreadline-dev libgdbm-dev libsqlite3-dev libbz2-dev
+          sudo apt-get install -y build-essential libffi-dev libssl-dev ccache git zip unzip \
+            openjdk-17-jdk autoconf libtool pkg-config zlib1g-dev libncurses5-dev \
+            libncursesw5-dev libtinfo5 cmake gettext libreadline-dev libgdbm-dev \
+            libsqlite3-dev libbz2-dev
 
-      - name: Install Buildozer & Dependencies
+      # Cache the NDK across runs so we only download the ~500MB zip once.
+      - name: Cache Android NDK r25c
+        id: ndk-cache
+        uses: actions/cache@v4
+        with:
+          path: /home/runner/ndk-cache
+          key: android-ndk-r25c-linux
+
+      # This is the actual fix for the recurring HTTP 404 / "buildozer failed
+      # to execute the last command" errors. buildozer's own downloader asks
+      # for "android-ndk-r25b-linux-x86_64.zip", which no longer exists.
+      # We fetch the real, current filename directly from Google instead,
+      # and buildozer.spec's android.ndk_path points straight at it.
+      - name: Download Android NDK r25c
+        if: steps.ndk-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p /home/runner/ndk-cache
+          wget -q https://dl.google.com/android/repository/android-ndk-r25c-linux.zip -O /tmp/ndk.zip
+          unzip -q /tmp/ndk.zip -d /home/runner/ndk-cache
+          rm /tmp/ndk.zip
+          ls /home/runner/ndk-cache
+
+      - name: Install Buildozer
         run: |
           pip install --upgrade pip setuptools wheel
-          pip install cython==0.29.33
-          pip install buildozer python-for-android
+          pip install Cython==0.29.33
+          pip install buildozer
 
-      - name: Setup Android SDK Command-line Tools
-        run: |
-          mkdir -p ~/.buildozer/android/platform/android-sdk/cmdline-tools/latest
-          wget -q https://dl.google.com/android/repository/commandlinetools-linux-9441910_latest.zip -O tools.zip
-          unzip -q tools.zip
-          mv cmdline-tools/* ~/.buildozer/android/platform/android-sdk/cmdline-tools/latest/
-          rm -rf tools.zip cmdline-tools
-          
-          # Create legacy symlink so buildozer finds sdkmanager regardless of legacy or modern path
-          mkdir -p ~/.buildozer/android/platform/android-sdk/tools
-          ln -s ~/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin ~/.buildozer/android/platform/android-sdk/tools/bin
-
-          # Accept all Android licenses automatically via sdkmanager
-          yes | ~/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses || true
-
+      # Plain, direct buildozer invocation - no third-party build actions,
+      # no Docker container, no extra CLI flags. Every one of those
+      # alternate approaches was a separate failure mode in earlier runs.
       - name: Build APK with Buildozer
-        run: |
-          buildozer -v android debug
+        run: buildozer -v android debug
 
-      - name: Upload APK Artifact
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: daybox-apk
+          name: plendar-apk
           path: bin/*.apk
-          
