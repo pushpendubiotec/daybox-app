@@ -1,25 +1,19 @@
 [app]
 
 # (str) Title of your application
-title = Daybox
+title = Plendar
 
 # (str) Package name
-package.name = daybox
+package.name = plendar
 
 # (str) Package domain (needed for android packaging)
-package.domain = com.daybox.app
+package.domain = com.plendar.app
 
 # (str) Source code where the main.py lives
 source.dir = .
 
 # (list) Source files to include (leave empty to include all files)
 source.include_exts = py,png,jpg,kv,atlas,json
-
-# (list) List of inclusions using pattern matching
-#source.include_patterns = assets/*,images/*.png
-
-# (list) Source files to exclude (let empty to not exclude anything)
-#source.exclude_exts = spec
 
 # (list) List of directory to exclude (let empty to not exclude anything)
 source.exclude_dirs = tests, bin, .venv, .git, .github
@@ -28,14 +22,9 @@ source.exclude_dirs = tests, bin, .venv, .git, .github
 version = 0.1
 
 # (list) Application requirements
-# Add any extra Python libraries here separated by commas (e.g., requests, urllib3)
-requirements = python3==3.11.0,kivy
-
-# (str) Custom source folders for requirements
-# Sets custom source for any requirement with recipes or source code
-
-# (list) Garden requirements
-#garden_requirements =
+# NOTE: do not pin an exact python3 version here (e.g. python3==3.11.0) -
+# it breaks python-for-android's recipe resolution. Just "python3" is safest.
+requirements = python3,kivy
 
 # (str) Presplash image filename
 #presplash.filename = %(source.dir)s/data/presplash.png
@@ -46,18 +35,12 @@ requirements = python3==3.11.0,kivy
 # (str) Supported orientations (one of landscape, sensorLandscape, portrait or all)
 orientation = portrait
 
-# (list) List of service to declare
-#services = my service:./service.py
-
 #
 # Android specific configurations
 #
 
 # (bool) Indicate if the application should be fullscreen or not
 fullscreen = 0
-
-# (string) Presplash background color (for android toolchain v26+)
-#android.presplash_color = #FFFFFF
 
 # (list) Permissions
 android.permissions = INTERNET
@@ -68,23 +51,23 @@ android.api = 33
 # (int) Minimum API required to run the app
 android.minapi = 21
 
-# (str) Android NDK version to use (Using 25b prevents 404 download errors)
+# (str) Android NDK version to use
 android.ndk = 25c
 
-# (int) Android NDK API version
-android.ndk_api = 21
+# (str) Android NDK directory (if empty, it will be automatically downloaded)
+# We pre-download this ourselves in the CI workflow instead of leaving it
+# empty, because buildozer's built-in downloader requests
+# "android-ndk-r25b-linux-x86_64.zip", which 404s - Google renamed the file
+# to "android-ndk-r25c-linux.zip" (no "-x86_64") when NDK 23+ shipped.
+# This path must match the "Download Android NDK" step in build.yml.
+android.ndk_path = /home/runner/ndk-cache/android-ndk-r25c
 
-# (bool) Automatically accept Android SDK licenses
+# (bool) Automatically accept Android SDK license agreements.
+# Required for unattended CI builds.
 android.accept_sdk_license = True
 
 # (str) The Android arch to build for, choices: armeabi-v7a, arm64-v8a, x86, x86_64
 android.archs = arm64-v8a, armeabi-v7a
-
-# (bool) Enable Android logcat output filtering
-#android.logcat_filters = *:S python:D
-
-# (bool) Copy library instead of making a libdir and symlinking
-#android.copy_libs = 1
 
 # (str) The format used to package the app for release (aab or apk)
 android.release_artifact = apk
@@ -99,12 +82,12 @@ android.debug_artifact = apk
 log_level = 2
 
 # (int) Display warning if buildozer is run as root (0 = disable, 1 = enable)
+# Keep this at 0 - GitHub Actions runners execute as a non-root "runner" user
+# by default anyway; this just silences a harmless warning if that ever changes.
 warn_on_root = 0
 
+# NOTE: do not try to override this from the command line with
+# "buildozer --warn_on_version_defaults 0 android debug" - that is not valid
+# buildozer CLI syntax and buildozer will misread "0" as the build target.
+# This setting only works as a config line, like this one:
 warn_on_version_defaults = 1
-
-# (str) Path to build artifact storage
-# build_dir = ./.buildozer
-
-# (str) Path to build output (where the APK will be placed)
-# bin_dir = ./bin
