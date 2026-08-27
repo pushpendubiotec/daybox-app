@@ -1,70 +1,115 @@
-name: Build Android APK
+[app]
 
-on:
-  push:
-    branches: [ main, master ]
-  workflow_dispatch:
+# (str) Title of your application
+title = Plendar
 
-jobs:
-  build:
-    # Pinned explicitly to 22.04 (jammy). "ubuntu-latest" now points at 24.04
-    # (noble), which dropped libtinfo5 from its default apt sources and
-    # caused earlier runs to fail at "Install System Dependencies".
-    runs-on: ubuntu-22.04
+# (str) Package name
+package.name = plendar
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+# (str) Package domain (needed for android packaging)
+package.domain = com.plendar.app
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
+# (str) Source code where the main.py lives
+source.dir = .
 
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential libffi-dev libssl-dev ccache git zip unzip \
-            openjdk-17-jdk autoconf libtool pkg-config zlib1g-dev libncurses5-dev \
-            libncursesw5-dev libtinfo5 cmake gettext libreadline-dev libgdbm-dev \
-            libsqlite3-dev libbz2-dev
+# (list) Source files to include (leave empty to include all files)
+source.include_exts = py,png,jpg,kv,atlas,json
 
-      # Cache the NDK across runs so we only download the ~500MB zip once.
-      - name: Cache Android NDK r25c
-        id: ndk-cache
-        uses: actions/cache@v4
-        with:
-          path: /home/runner/ndk-cache
-          key: android-ndk-r25c-linux
+# (list) List of directory to exclude (let empty to not exclude anything)
+source.exclude_dirs = tests, bin, .venv, .git, .github
 
-      # This is the actual fix for the recurring HTTP 404 / "buildozer failed
-      # to execute the last command" errors. buildozer's own downloader asks
-      # for "android-ndk-r25b-linux-x86_64.zip", which no longer exists.
-      # We fetch the real, current filename directly from Google instead,
-      # and buildozer.spec's android.ndk_path points straight at it.
-      - name: Download Android NDK r25c
-        if: steps.ndk-cache.outputs.cache-hit != 'true'
-        run: |
-          mkdir -p /home/runner/ndk-cache
-          wget -q https://dl.google.com/android/repository/android-ndk-r25c-linux.zip -O /tmp/ndk.zip
-          unzip -q /tmp/ndk.zip -d /home/runner/ndk-cache
-          rm /tmp/ndk.zip
-          ls /home/runner/ndk-cache
+# (string) Application versioning
+version = 0.1
 
-      - name: Install Buildozer
-        run: |
-          pip install --upgrade pip setuptools wheel
-          pip install Cython==0.29.33
-          pip install buildozer==1.5.0 python-for-android==2024.1.21 cython==0.29.36
+# (list) Application requirements
+# Safe to pin python3==3.11 here now that p4a itself is pinned below to
+# v2024.01.21, which defaults hostpython3 to 3.11 too. If these two
+# versions ever drift apart again, you'll see:
+#   "Build failed: python3 should have same version as hostpython3"
+requirements = python3==3.11,kivy==2.3.1
 
-      # Plain, direct buildozer invocation - no third-party build actions,
-      # no Docker container, no extra CLI flags. Every one of those
-      # alternate approaches was a separate failure mode in earlier runs.
-      - name: Build APK with Buildozer
-        run: buildozer -v android debug
+# (str) Presplash image filename
+#presplash.filename = %(source.dir)s/data/presplash.png
 
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: plendar-apk
-          path: bin/*.apk
+# (str) Icon filename
+#icon.filename = %(source.dir)s/data/icon.png
+
+# (str) Supported orientations (one of landscape, sensorLandscape, portrait or all)
+orientation = portrait
+
+#
+# Android specific configurations
+#
+
+# (bool) Indicate if the application should be fullscreen or not
+fullscreen = 0
+
+# (list) Permissions
+android.permissions = INTERNET
+
+# (int) Target Android API, touch this only if you know what you are doing
+android.api = 33
+
+# (int) Minimum API required to run the app
+android.minapi = 21
+
+# (str) Android NDK version to use
+android.ndk = 25c
+
+# (str) Android NDK directory (if empty, it will be automatically downloaded)
+# We pre-download this ourselves in the CI workflow instead of leaving it
+# empty, because buildozer's built-in downloader requests
+# "android-ndk-r25b-linux-x86_64.zip", which 404s - Google renamed the file
+# to "android-ndk-r25c-linux.zip" (no "-x86_64") when NDK 23+ shipped.
+# This path must match the "Download Android NDK" step in build.yml.
+android.ndk_path = /home/runner/ndk-cache/android-ndk-r25c
+
+# (bool) Automatically accept Android SDK license agreements.
+# Required for unattended CI builds.
+android.accept_sdk_license = True
+
+# (str) The Android arch to build for, choices: armeabi-v7a, arm64-v8a, x86, x86_64
+android.archs = arm64-v8a, armeabi-v7a
+
+# (str) The format used to package the app for release (aab or apk)
+android.release_artifact = apk
+
+# (str) The format used to package the app for debug (apk)
+android.debug_artifact = apk
+
+#
+# Python for android (p4a) specific
+#
+
+# (str) python-for-android branch to use
+# IMPORTANT: buildozer ignores any "pip install python-for-android==X"
+# step in your CI workflow - it always does its own fresh "git clone" of
+# p4a into .buildozer/android/platform/python-for-android, using these
+# two settings (branch + commit), not whatever's pip-installed.
+p4a.branch = master
+
+# (str) python-for-android specific commit/tag to use, must be within p4a.branch
+# v2024.01.21 is pinned deliberately: it's the last p4a release confirmed
+# to default hostpython3 to Python 3.11. The current master/develop branch
+# now defaults to Python 3.14, which breaks the "python3==3.11" pin above
+# with: "Build failed: python3 should have same version as hostpython3,
+# 3.11 != 3.14.2". If you ever want to move to a newer p4a on purpose,
+# update both this commit AND the requirements line above together.
+p4a.commit = v2024.01.21
+
+
+[buildozer]
+
+# (int) Log level (0 = error only, 1 = info, 2 = debug (with command output))
+log_level = 2
+
+# (int) Display warning if buildozer is run as root (0 = disable, 1 = enable)
+# Keep this at 0 - GitHub Actions runners execute as a non-root "runner" user
+# by default anyway; this just silences a harmless warning if that ever changes.
+warn_on_root = 0
+
+# NOTE: do not try to override this from the command line with
+# "buildozer --warn_on_version_defaults 0 android debug" - that is not valid
+# buildozer CLI syntax and buildozer will misread "0" as the build target.
+# This setting only works as a config line, like this one:
+warn_on_version_defaults = 1
