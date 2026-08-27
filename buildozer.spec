@@ -28,7 +28,7 @@ version = 0.1
 # and hostpython3 versions don't match, the build fails with:
 #   "Build failed: python3 should have same version as hostpython3"
 # Leaving python3 unpinned lets both resolve to the same version together.
-requirements = python3,kivy==2.3.1
+requirements = python3==3.11,kivy==2.3.1
 
 # (str) Presplash image filename
 #presplash.filename = %(source.dir)s/data/presplash.png
