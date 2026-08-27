@@ -24,7 +24,7 @@ version = 0.1
 # (list) Application requirements
 # NOTE: do not pin an exact python3 version here (e.g. python3==3.11.0) -
 # it breaks python-for-android's recipe resolution. Just "python3" is safest.
-requirements = python3,kivy
+requirements = python3==3.11,kivy==2.3.1
 
 # (str) Presplash image filename
 #presplash.filename = %(source.dir)s/data/presplash.png
