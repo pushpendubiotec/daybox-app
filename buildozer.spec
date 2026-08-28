@@ -22,7 +22,7 @@ source.exclude_dirs = tests, bin, .venv, .git, .github
 version = 0.1
 
 # (list) Application requirements
-requirements = python3==3.11,kivy==2.3.1
+requirements = python3==3.11.5,kivy==2.3.1
 
 # (str) Presplash image filename
 #presplash.filename = %(source.dir)s/data/presplash.png
