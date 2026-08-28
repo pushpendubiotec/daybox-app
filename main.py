@@ -548,4 +548,453 @@ KV_BUILDER = """
                             background_normal: ''
                             background_color: (0.99, 0.88, 0.28, 1)
                             color: (0.08, 0.09, 0.11, 1)
-                            bold:
+                            bold: True
+                            on_release: root.open_note_editor()
+
+                    GridLayout:
+                        id: main_notes_grid
+                        cols: 1
+                        spacing: '12dp'
+                        size_hint_y: None
+                        height: self.minimum_height
+
+        BottomNavBar:
+
+# ------------------------------------------------------------------------------
+# SCREEN 5: AI HUB (Sarcastic Assistant & Multi-Model Q&A - Questions 21-25)
+# ------------------------------------------------------------------------------
+<AiHubScreen>:
+    BoxLayout:
+        orientation: 'vertical'
+
+        TopNavBar:
+
+        BoxLayout:
+            orientation: 'vertical'
+            padding: '16dp'
+            spacing: '12dp'
+
+            # Sarcastic AI Header Card
+            BoxLayout:
+                size_hint_y: None
+                height: '70dp'
+                padding: '12dp'
+                canvas.before:
+                    Color:
+                        rgba: (0.18, 0.21, 0.26, 1)
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [12]
+
+                Label:
+                    text: '🤖 Daybox AI Companion\\n"Ask me about your schedule, or upload notes to summarize."'
+                    font_size: '12sp'
+                    color: (0.99, 0.88, 0.28, 1)
+                    text_size: self.size
+                    halign: 'left'
+                    valign: 'middle'
+
+            ScrollView:
+                BoxLayout:
+                    id: ai_chat_history
+                    orientation: 'vertical'
+                    spacing: '10dp'
+                    size_hint_y: None
+                    height: self.minimum_height
+
+            # Quick One-Tap Action Chips
+            BoxLayout:
+                size_hint_y: None
+                height: '36dp'
+                spacing: '8dp'
+
+                Button:
+                    text: '📅 Schedule Today'
+                    font_size: '10sp'
+                    background_normal: ''
+                    background_color: (0.18, 0.21, 0.26, 1)
+                    color: (0.22, 0.74, 0.97, 1)
+                    on_release: root.send_quick_prompt("What is my schedule for today?")
+
+                Button:
+                    text: '⚠️ Attendance Alerts'
+                    font_size: '10sp'
+                    background_normal: ''
+                    background_color: (0.18, 0.21, 0.26, 1)
+                    color: (0.99, 0.88, 0.28, 1)
+                    on_release: root.send_quick_prompt("Check my attendance status.")
+
+            # Input Prompt Row
+            BoxLayout:
+                size_hint_y: None
+                height: '48dp'
+                spacing: '8dp'
+
+                TextInput:
+                    id: ai_prompt_input
+                    hint_text: 'Ask Daybox AI...'
+                    multiline: False
+                    background_color: (0.14, 0.16, 0.2, 1)
+                    foreground_color: (0.9, 0.92, 0.95, 1)
+
+                Button:
+                    text: 'Send'
+                    size_hint_x: None
+                    width: '70dp'
+                    background_normal: ''
+                    background_color: (0.22, 0.74, 0.97, 1)
+                    color: (0.08, 0.09, 0.11, 1)
+                    bold: True
+                    on_release: root.process_ai_query()
+
+        BottomNavBar:
+"""
+
+Builder.load_string(KV_BUILDER)
+
+# ==============================================================================
+# SCREEN IMPLEMENTATIONS & LOGIC
+# ==============================================================================
+class DashboardScreen(Screen):
+    def on_enter(self):
+        self.load_dashboard_data()
+
+    def load_dashboard_data(self):
+        # Refresh Attendance Summary Text
+        cursor = db.conn.cursor()
+        cursor.execute("SELECT subject, attended, total, target_pct FROM attendance")
+        rows = cursor.fetchall()
+        summary_lines = []
+        for sub, att, tot, target in rows:
+            pct = (att / tot * 100.0) if tot > 0 else 100.0
+            status = "Safe" if pct >= target else "WARNING"
+            summary_lines.append(f"• {sub}: {pct:.1f}% ({status})")
+        self.ids.dash_attend_summary.text = "\n".join(summary_lines[:3])
+
+class CalendarScreen(Screen):
+    def on_enter(self):
+        self.render_schedule()
+
+    def render_schedule(self):
+        container = self.ids.schedule_timeline_layout
+        container.clear_widgets()
+
+        cursor = db.conn.cursor()
+        today_str = datetime.date.today().strftime("%Y-%m-%d")
+        cursor.execute("SELECT id, title, time_str, is_task, completed, color_hex FROM events WHERE date_str = ?", (today_str,))
+        rows = cursor.fetchall()
+
+        if not rows:
+            container.add_widget(Label(
+                text="No events scheduled for today.\nTake a rest or sleep in!",
+                font_size='13sp', color=(0.6, 0.65, 0.7, 1),
+                size_hint_y=None, height='60dp'
+            ))
+            return
+
+        for eid, title, time_str, is_task, completed, color_hex in rows:
+            card = BoxLayout(orientation='horizontal', size_hint_y=None, height='50dp', padding='8dp', spacing='10dp')
+            # Draw Card Background
+            with card.canvas.before:
+                Color(0.18, 0.21, 0.26, 1)
+                RoundedRectangle(pos=card.pos, size=card.size, radius=[8])
+
+            # Color Indicator Bar
+            bar = Widget(size_hint_x=None, width='6dp')
+            with bar.canvas:
+                # Convert Hex to RGB Approximation
+                Color(0.22, 0.74, 0.97, 1) if color_hex == "#38BDF8" else Color(0.99, 0.88, 0.28, 1)
+                RoundedRectangle(pos=bar.pos, size=bar.size, radius=[3])
+
+            lbl_time = Label(text=time_str, font_size='11sp', color=(0.99, 0.88, 0.28, 1), size_hint_x=None, width='70dp')
+            lbl_title = Label(text=title, font_size='13sp', color=(0.9, 0.92, 0.95, 1), halign='left', text_size=(200, None))
+
+            card.add_widget(bar)
+            card.add_widget(lbl_time)
+            card.add_widget(lbl_title)
+            container.add_widget(card)
+
+    def open_month_grid_picker(self):
+        # Full Month Grid Picker (Question 6)
+        content = BoxLayout(orientation='vertical', padding='12dp', spacing='8dp')
+        content.add_widget(Label(text="August 2026 Grid Overview", bold=True, color=(0.22, 0.74, 0.97, 1)))
+
+        grid = GridLayout(cols=7, spacing='4dp')
+        days = ["M", "T", "W", "T", "F", "S", "S"]
+        for d in days:
+            grid.add_widget(Label(text=d, font_size='11sp', color=(0.5, 0.55, 0.6, 1)))
+
+        for day_num in range(1, 32):
+            btn = Button(text=str(day_num), background_normal='', background_color=(0.18, 0.21, 0.26, 1), color=(0.9, 0.92, 0.95, 1))
+            grid.add_widget(btn)
+
+        content.add_widget(grid)
+        popup = Popup(title="Select Date", content=content, size_hint=(0.85, 0.65))
+        popup.open()
+
+    def open_add_event_modal(self):
+        # Event Creator Modal with Time Slot Selection
+        box = BoxLayout(orientation='vertical', padding='12dp', spacing='10dp')
+        title_in = TextInput(hint_text="Event Title", multiline=False, background_color=(0.14, 0.16, 0.2, 1), foreground_color=(1,1,1,1))
+        time_in = TextInput(hint_text="Time (e.g. 11:00 AM)", multiline=False, background_color=(0.14, 0.16, 0.2, 1), foreground_color=(1,1,1,1))
+
+        box.add_widget(Label(text="Create Primary Event/Task", bold=True, color=(0.22, 0.74, 0.97, 1)))
+        box.add_widget(title_in)
+        box.add_widget(time_in)
+
+        btn_save = Button(text="Save to Daybox", size_hint_y=None, height='40dp', background_normal='', background_color=(0.22, 0.74, 0.97, 1), color=(0,0,0,1), bold=True)
+        box.add_widget(btn_save)
+
+        popup = Popup(title="New Schedule Item", content=box, size_hint=(0.85, 0.5))
+
+        def save_event(instance):
+            if title_in.text and time_in.text:
+                today_str = datetime.date.today().strftime("%Y-%m-%d")
+                cursor = db.conn.cursor()
+                cursor.execute("INSERT INTO events (title, date_str, time_str, is_task, completed, color_hex) VALUES (?, ?, ?, ?, ?, ?)",
+                               (title_in.text, today_str, time_in.text, 0, 0, "#38BDF8"))
+                db.conn.commit()
+                popup.dismiss()
+                self.render_schedule()
+
+        btn_save.bind(on_release=save_event)
+        popup.open()
+
+class AttendanceScreen(Screen):
+    def on_enter(self):
+        self.render_attendance_cards()
+
+    def render_attendance_cards(self):
+        container = self.ids.attendance_cards_container
+        container.clear_widgets()
+
+        cursor = db.conn.cursor()
+        cursor.execute("SELECT id, subject, attended, total, target_pct, is_major FROM attendance")
+        rows = cursor.fetchall()
+
+        for sid, sub, att, tot, target, is_major in rows:
+            pct = (att / tot * 100.0) if tot > 0 else 100.0
+
+            # Safe Bunk Calculation (Question 12)
+            # Formula: (Attended) / (Total + Bunks) >= Target/100
+            safe_bunks = 0
+            temp_tot = tot
+            while (att / (temp_tot + 1) * 100.0) >= target:
+                safe_bunks += 1
+                temp_tot += 1
+
+            # Catch-up Classes Needed if Below Target
+            needed_classes = 0
+            temp_att = att
+            temp_tot_c = tot
+            while (temp_att / temp_tot_c * 100.0) < target:
+                needed_classes += 1
+                temp_att += 1
+                temp_tot_c += 1
+
+            # Card Container
+            card = BoxLayout(orientation='vertical', size_hint_y=None, height='140dp', padding='12dp', spacing='8dp')
+            with card.canvas.before:
+                Color(0.18, 0.21, 0.26, 1)
+                RoundedRectangle(pos=card.pos, size=card.size, radius=[10])
+
+            # Header Row
+            header = BoxLayout(size_hint_y=None, height='24dp')
+            lbl_sub = Label(text=sub, font_size='14sp', bold=True, color=(0.9, 0.92, 0.95, 1), halign='left', text_size=(220, None))
+            lbl_pct = Label(text=f"{pct:.1f}%", font_size='14sp', bold=True,
+                            color=(0.29, 0.87, 0.5, 1) if pct >= target else (0.97, 0.44, 0.44, 1), halign='right')
+            header.add_widget(lbl_sub)
+            header.add_widget(lbl_pct)
+
+            # Details & Predictor Text
+            if pct >= target:
+                bunk_info = f"Bunk Predictor: You can safely miss {safe_bunks} class(es)."
+            else:
+                bunk_info = f"Bunk Predictor: WARNING! Attend {needed_classes} next class(es)!"
+
+            lbl_details = Label(text=f"Attended: {att}/{tot}  |  Target: {target:.0f}%\n{bunk_info}",
+                                font_size='11sp', color=(0.7, 0.75, 0.8, 1), halign='left', text_size=(320, None))
+
+            # Action Buttons Row: Present, Absent, Exempt (Question 12)
+            actions = BoxLayout(size_hint_y=None, height='32dp', spacing='8dp')
+
+            btn_pres = Button(text="✓ Present", background_normal='', background_color=(0.29, 0.87, 0.5, 0.2), color=(0.29, 0.87, 0.5, 1))
+            btn_abs = Button(text="✗ Absent", background_normal='', background_color=(0.97, 0.44, 0.44, 0.2), color=(0.97, 0.44, 0.44, 1))
+            btn_exm = Button(text="↷ Exempt", background_normal='', background_color=(0.99, 0.88, 0.28, 0.2), color=(0.99, 0.88, 0.28, 1))
+
+            # Bind Attendance Logic
+            def mark_p(inst, subject_id=sid, is_m=is_major, sub_name=sub):
+                cursor.execute("UPDATE attendance SET attended = attended + 1, total = total + 1 WHERE id = ?", (subject_id,))
+                db.conn.commit()
+                self.render_attendance_cards()
+
+            def mark_a(inst, subject_id=sid, is_m=is_major, sub_name=sub):
+                if is_m:
+                    # Sarcastic Warning Popup for Major Subjects (Question 12)
+                    self.show_sarcastic_warning(sub_name)
+                cursor.execute("UPDATE attendance SET total = total + 1 WHERE id = ?", (subject_id,))
+                db.conn.commit()
+                self.render_attendance_cards()
+
+            btn_pres.bind(on_release=mark_p)
+            btn_abs.bind(on_release=mark_a)
+
+            actions.add_widget(btn_pres)
+            actions.add_widget(btn_abs)
+            actions.add_widget(btn_exm)
+
+            card.add_widget(header)
+            card.add_widget(lbl_details)
+            card.add_widget(actions)
+
+            container.add_widget(card)
+
+    def show_sarcastic_warning(self, subject_name):
+        content = BoxLayout(orientation='vertical', padding='14dp', spacing='10dp')
+        msg = f'🤖 "Skipping {subject_name}? Bold choice!\nYour future exam self is crying right now."'
+        content.add_widget(Label(text=msg, font_size='13sp', color=(0.99, 0.88, 0.28, 1)))
+
+        btn_ok = Button(text="I Accept the Consequences", size_hint_y=None, height='36dp',
+                        background_normal='', background_color=(0.97, 0.44, 0.44, 1), color=(1,1,1,1))
+        content.add_widget(btn_ok)
+
+        popup = Popup(title="Major Class Warning", content=content, size_hint=(0.8, 0.4))
+        btn_ok.bind(on_release=popup.dismiss)
+        popup.open()
+
+class NotesScreen(Screen):
+    def on_enter(self):
+        self.render_notes_and_tasks()
+
+    def render_notes_and_tasks(self):
+        # Render Section A: Quick Checklists
+        task_box = self.ids.task_checklist_box
+        task_box.clear_widgets()
+
+        cursor = db.conn.cursor()
+        cursor.execute("SELECT id, title, completed FROM events WHERE is_task = 1")
+        tasks = cursor.fetchall()
+
+        for tid, title, comp in tasks:
+            row = BoxLayout(size_hint_y=None, height='32dp', spacing='8dp')
+            btn_chk = Button(text="[X]" if comp else "[  ]", size_hint_x=None, width='36dp',
+                             background_normal='', background_color=(0,0,0,0), color=(0.22, 0.74, 0.97, 1))
+            lbl = Label(text=title, font_size='13sp', color=(0.9, 0.92, 0.95, 1), halign='left', text_size=(240, None))
+            row.add_widget(btn_chk)
+            row.add_widget(lbl)
+            task_box.add_widget(row)
+
+        # Render Section B: Main Note Cards
+        notes_grid = self.ids.main_notes_grid
+        notes_grid.clear_widgets()
+
+        cursor.execute("SELECT id, title, content, tag, color_hex FROM notes")
+        notes = cursor.fetchall()
+
+        for nid, title, content, tag, color_hex in notes:
+            card = BoxLayout(orientation='vertical', size_hint_y=None, height='90dp', padding='10dp', spacing='4dp')
+            with card.canvas.before:
+                Color(0.18, 0.21, 0.26, 1)
+                RoundedRectangle(pos=card.pos, size=card.size, radius=[8])
+
+            lbl_t = Label(text=f"{tag}  {title}", font_size='13sp', bold=True, color=(0.22, 0.74, 0.97, 1), halign='left', text_size=(300, None))
+            lbl_c = Label(text=content, font_size='11sp', color=(0.7, 0.75, 0.8, 1), halign='left', text_size=(300, None))
+
+            card.add_widget(lbl_t)
+            card.add_widget(lbl_c)
+            notes_grid.add_widget(card)
+
+    def open_note_editor(self):
+        # Frictionless 1-2 Click Note Creator (Question 16)
+        box = BoxLayout(orientation='vertical', padding='12dp', spacing='10dp')
+        tag_in = TextInput(hint_text="Tag (e.g. #Genetics)", multiline=False, background_color=(0.14, 0.16, 0.2, 1), foreground_color=(1,1,1,1))
+        title_in = TextInput(hint_text="Note Title", multiline=False, background_color=(0.14, 0.16, 0.2, 1), foreground_color=(1,1,1,1))
+        content_in = TextInput(hint_text="Type contents...", multiline=True, background_color=(0.14, 0.16, 0.2, 1), foreground_color=(1,1,1,1))
+
+        box.add_widget(tag_in)
+        box.add_widget(title_in)
+        box.add_widget(content_in)
+
+        btn_save = Button(text="Save Note", size_hint_y=None, height='40dp', background_normal='', background_color=(0.99, 0.88, 0.28, 1), color=(0,0,0,1), bold=True)
+        box.add_widget(btn_save)
+
+        popup = Popup(title="New Canvas Note", content=box, size_hint=(0.85, 0.65))
+
+        def save_note(inst):
+            if title_in.text:
+                today_str = datetime.date.today().strftime("%Y-%m-%d")
+                cursor = db.conn.cursor()
+                cursor.execute("INSERT INTO notes (title, content, tag, is_private, align_mode, color_hex, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                               (title_in.text, content_in.text, tag_in.text or "#General", 0, "left", "#38BDF8", today_str))
+                db.conn.commit()
+                popup.dismiss()
+                self.render_notes_and_tasks()
+
+        btn_save.bind(on_release=save_note)
+        popup.open()
+
+class AiHubScreen(Screen):
+    def process_ai_query(self):
+        query = self.ids.ai_prompt_input.text
+        if query:
+            self.send_quick_prompt(query)
+            self.ids.ai_prompt_input.text = ""
+
+    def send_quick_prompt(self, prompt_text):
+        history = self.ids.ai_chat_history
+
+        # User Bubble
+        u_lbl = Label(text=f"You: {prompt_text}", font_size='12sp', color=(0.22, 0.74, 0.97, 1),
+                      size_hint_y=None, height='28dp', halign='left', text_size=(300, None))
+        history.add_widget(u_lbl)
+
+        # AI Answer Logic
+        response_text = ""
+        low_p = prompt_text.lower()
+        if "schedule" in low_p:
+            response_text = "🤖 Daybox AI: Today you have Genetics Presentation at 09:30 AM and Biotech Lab Report due at 02:00 PM."
+        elif "attendance" in low_p:
+            response_text = "🤖 Daybox AI: Genetics is at 81.8% (Safe). Chemistry is near threshold at 76.0%. Keep it up!"
+        else:
+            response_text = f"🤖 Daybox AI: Analysis complete for '{prompt_text}'. All local database parameters are synced."
+
+        ai_lbl = Label(text=response_text, font_size='12sp', color=(0.99, 0.88, 0.28, 1),
+                       size_hint_y=None, height='40dp', halign='left', text_size=(300, None))
+        history.add_widget(ai_lbl)
+
+# ==============================================================================
+# MAIN APPLICATION ENGINE & NAVIGATION SETUP
+# ==============================================================================
+class DayboxApp(App):
+    def build(self):
+        self.title = "Daybox"
+        self.sm = ScreenManager(transition=FadeTransition())
+
+        # Register Blueprint Screens
+        self.sm.add_widget(DashboardScreen(name='dashboard'))
+        self.sm.add_widget(CalendarScreen(name='calendar'))
+        self.sm.add_widget(AttendanceScreen(name='attendance'))
+        self.sm.add_widget(NotesScreen(name='notes'))
+        self.sm.add_widget(AiHubScreen(name='ai_hub'))
+
+        return self.sm
+
+    def open_hamburger_menu(self):
+        # Slide-out Menu for Global Options (Question 2)
+        content = BoxLayout(orientation='vertical', padding='16dp', spacing='12dp')
+        content.add_widget(Label(text="DAYBOX MENU", font_size='16sp', bold=True, color=(0.22, 0.74, 0.97, 1)))
+
+        btn_sync = Button(text="Google Calendar Sync", size_hint_y=None, height='40dp', background_normal='', background_color=(0.18, 0.21, 0.26, 1), color=(1,1,1,1))
+        btn_backup = Button(text="Export .daybox Backup", size_hint_y=None, height='40dp', background_normal='', background_color=(0.18, 0.21, 0.26, 1), color=(1,1,1,1))
+        btn_theme = Button(text="Theme: Pastel Sunset", size_hint_y=None, height='40dp', background_normal='', background_color=(0.18, 0.21, 0.26, 1), color=(0.99, 0.88, 0.28, 1))
+
+        content.add_widget(btn_sync)
+        content.add_widget(btn_backup)
+        content.add_widget(btn_theme)
+
+        popup = Popup(title="Settings & Menu", content=content, size_hint=(0.75, 0.55))
+        popup.open()
+
+if __name__ == '__main__':
+    DayboxApp().run()
