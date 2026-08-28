@@ -22,12 +22,6 @@ source.exclude_dirs = tests, bin, .venv, .git, .github
 version = 0.1
 
 # (list) Application requirements
-# IMPORTANT: do not pin an exact python3 version here (e.g. python3==3.11) -
-# python-for-android's hostpython3 recipe is tied to the installed p4a
-# version and may resolve to a different Python (e.g. 3.14.2). If python3
-# and hostpython3 versions don't match, the build fails with:
-#   "Build failed: python3 should have same version as hostpython3"
-# Leaving python3 unpinned lets both resolve to the same version together.
 requirements = python3==3.11,kivy==2.3.1
 
 # (str) Presplash image filename
@@ -59,15 +53,9 @@ android.minapi = 21
 android.ndk = 25c
 
 # (str) Android NDK directory (if empty, it will be automatically downloaded)
-# We pre-download this ourselves in the CI workflow instead of leaving it
-# empty, because buildozer's built-in downloader requests
-# "android-ndk-r25b-linux-x86_64.zip", which 404s - Google renamed the file
-# to "android-ndk-r25c-linux.zip" (no "-x86_64") when NDK 23+ shipped.
-# This path must match the "Download Android NDK" step in build.yml.
 android.ndk_path = /home/runner/ndk-cache/android-ndk-r25c
 
 # (bool) Automatically accept Android SDK license agreements.
-# Required for unattended CI builds.
 android.accept_sdk_license = True
 
 # (str) The Android arch to build for, choices: armeabi-v7a, arm64-v8a, x86, x86_64
@@ -79,6 +67,16 @@ android.release_artifact = apk
 # (str) The format used to package the app for debug (apk)
 android.debug_artifact = apk
 
+#
+# Python for android (p4a) specific
+#
+
+# (str) python-for-android branch to use
+p4a.branch = master
+
+# (str) python-for-android specific commit/tag to use
+p4a.commit = v2024.01.21
+
 
 [buildozer]
 
@@ -86,12 +84,6 @@ android.debug_artifact = apk
 log_level = 2
 
 # (int) Display warning if buildozer is run as root (0 = disable, 1 = enable)
-# Keep this at 0 - GitHub Actions runners execute as a non-root "runner" user
-# by default anyway; this just silences a harmless warning if that ever changes.
 warn_on_root = 0
 
-# NOTE: do not try to override this from the command line with
-# "buildozer --warn_on_version_defaults 0 android debug" - that is not valid
-# buildozer CLI syntax and buildozer will misread "0" as the build target.
-# This setting only works as a config line, like this one:
 warn_on_version_defaults = 1
